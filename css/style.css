@@ -225,7 +225,21 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   .budget-card { grid-area: budget; }
   .form-card { grid-area: form; }
   .list-card { grid-area: list; }
+
+  /* 내역이 많아도 우측 단이 길어져 2단 높이 균형이 깨지지 않게 스크롤 처리 */
+  .entry-list {
+    max-height: 540px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
 }
+
+.entry-list::-webkit-scrollbar { width: 8px; }
+.entry-list::-webkit-scrollbar-thumb {
+  background: var(--track);
+  border-radius: 999px;
+}
+.entry-list::-webkit-scrollbar-track { background: transparent; }
 
 .card {
   background: var(--surface);
