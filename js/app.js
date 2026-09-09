@@ -1,6 +1,4 @@
-// 간단 가계부 - localStorage 기반 저장
-const STORAGE_KEY = "simple-ledger-entries";
-const STORAGE_KEY_BUDGET = "simple-ledger-budget";
+// 간단 가계부 - 내역/예산은 Supabase(js/db.js), 테마만 localStorage
 const STORAGE_KEY_THEME = "simple-ledger-theme";
 
 const RING_CIRCUMFERENCE = 326.73; // 2 * π * r(52)
@@ -28,8 +26,9 @@ function metaOf(category) {
   return CATEGORY_META[category] || { icon: "📦", color: "#64748b" };
 }
 
-let entries = loadEntries();
-let budget = loadBudget(); // { total: number, categories: { [category]: number } }
+let entries = [];
+let budget = { total: 0, categories: {} }; // { total, categories: { [category]: number } }
+let demoMode = false; // ?demo=1 : DB를 건드리지 않고 화면만 표시
 let currentType = "expense";
 let selectedCategory = CATEGORIES.expense[0];
 let viewDate = new Date(); // 현재 보고 있는 월
@@ -45,6 +44,7 @@ const currentMonthLabel = document.getElementById("currentMonth");
 const segmented = document.getElementById("segmented");
 const categoryChips = document.getElementById("categoryChips");
 const demoBtn = document.getElementById("demoBtn");
+const dbStatus = document.getElementById("dbStatus");
 
 const heroBalance = document.getElementById("heroBalance");
 const heroIncome = document.getElementById("heroIncome");
@@ -72,41 +72,24 @@ const budgetCancelBtn = document.getElementById("budgetCancelBtn");
 const themeToggle = document.getElementById("themeToggle");
 const themeIcon = document.getElementById("themeIcon");
 
-/* ===== 저장 / 불러오기 ===== */
-function loadEntries() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.error("Failed to load entries", e);
-    return [];
-  }
+/* ===== DB 연동 ===== */
+function setStatus(state, text) {
+  dbStatus.className = "db-status " + state;
+  dbStatus.textContent = text;
 }
 
-function saveEntries() {
+async function loadFromDb() {
+  setStatus("loading", "불러오는 중…");
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    const [rows, saved] = await Promise.all([DB.listEntries(), DB.getBudget()]);
+    entries = rows;
+    budget = saved;
+    setStatus("ok", "DB 연결됨");
   } catch (e) {
-    console.error("Failed to save entries", e);
+    console.error(e);
+    setStatus("error", "DB 연결 실패");
   }
-}
-
-function loadBudget() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_BUDGET);
-    return raw ? JSON.parse(raw) : { total: 0, categories: {} };
-  } catch (e) {
-    console.error("Failed to load budget", e);
-    return { total: 0, categories: {} };
-  }
-}
-
-function saveBudget() {
-  try {
-    localStorage.setItem(STORAGE_KEY_BUDGET, JSON.stringify(budget));
-  } catch (e) {
-    console.error("Failed to save budget", e);
-  }
+  render();
 }
 
 /* ===== 유틸 ===== */
@@ -231,16 +214,24 @@ function closeBudgetModal() {
   budgetModal.classList.add("hidden");
 }
 
-function saveBudgetFromModal() {
+async function saveBudgetFromModal() {
   const next = { total: Number(totalBudgetInput.value) || 0, categories: {} };
   CATEGORIES.expense.forEach((cat) => {
     const val = Number(document.getElementById(`catBudget-${cat}`).value) || 0;
     if (val > 0) next.categories[cat] = val;
   });
   budget = next;
-  saveBudget();
   closeBudgetModal();
   render();
+
+  if (demoMode) return;
+  try {
+    await DB.saveBudget(next);
+    setStatus("ok", "DB 연결됨");
+  } catch (e) {
+    console.error(e);
+    setStatus("error", "예산 저장 실패");
+  }
 }
 
 budgetSettingsBtn.addEventListener("click", openBudgetModal);
@@ -254,36 +245,57 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* ===== 내역 추가 / 삭제 ===== */
-entryForm.addEventListener("submit", (e) => {
+entryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const amount = Number(amountInput.value);
   if (!amount || amount <= 0) return;
 
-  entries.push({
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+  const draft = {
     type: currentType,
     date: dateInput.value || todayStr(),
     category: selectedCategory,
     amount,
     memo: memoInput.value.trim(),
-  });
+  };
 
-  saveEntries();
   amountInput.value = "";
   memoInput.value = "";
   amountInput.focus();
 
   // 방금 추가한 항목의 달로 이동해서 보여줌
-  const added = new Date(dateInput.value || todayStr());
+  const added = new Date(draft.date);
   viewDate = new Date(added.getFullYear(), added.getMonth(), 1);
 
+  if (demoMode) {
+    entries.push({ ...draft, id: `local-${Date.now().toString(36)}` });
+    render();
+    return;
+  }
+
+  setStatus("loading", "저장 중…");
+  try {
+    entries.push(await DB.addEntry(draft));
+    setStatus("ok", "DB 연결됨");
+  } catch (err) {
+    console.error(err);
+    setStatus("error", "저장 실패");
+  }
   render();
 });
 
-function deleteEntry(id) {
+async function deleteEntry(id) {
   entries = entries.filter((e) => e.id !== id);
-  saveEntries();
   render();
+
+  if (demoMode) return;
+  try {
+    await DB.deleteEntry(id);
+    setStatus("ok", "DB 연결됨");
+  } catch (e) {
+    console.error(e);
+    setStatus("error", "삭제 실패");
+    await loadFromDb(); // 실패했으면 DB 기준으로 되돌린다
+  }
 }
 
 /* ===== 데모 데이터 ===== */
@@ -320,28 +332,33 @@ function buildDemoEntries(date) {
   }));
 }
 
-// persist: true → 기존 내역에 추가하고 저장 / false → 화면에만 표시 (저장된 데이터 보존)
-function applyDemoData(persist) {
-  const demo = buildDemoEntries(viewDate);
+// DB에 데모 내역을 실제로 넣는다. 예산이 비어 있으면 데모 예산도 함께 저장.
+async function insertDemoData() {
+  const demo = buildDemoEntries(viewDate).map(({ id, ...rest }) => rest);
 
-  if (persist) {
-    entries = entries.concat(
-      demo.map((d, i) => ({ ...d, id: `demo-${Date.now().toString(36)}-${i}` }))
-    );
-    saveEntries();
+  setStatus("loading", "데모 데이터 저장 중…");
+  try {
+    entries = entries.concat(await DB.addEntries(demo));
     if (!budget.total) {
       budget = DEMO_BUDGET;
-      saveBudget();
+      await DB.saveBudget(budget);
     }
-  } else {
-    entries = demo;
-    budget = DEMO_BUDGET;
+    setStatus("ok", "DB 연결됨");
+  } catch (e) {
+    console.error(e);
+    setStatus("error", "데모 데이터 저장 실패");
   }
-
   render();
 }
 
-demoBtn.addEventListener("click", () => applyDemoData(true));
+// ?demo=1 : DB를 건드리지 않고 화면에만 데모 데이터 표시 (스크린샷용)
+function showDemoData() {
+  entries = buildDemoEntries(viewDate);
+  budget = DEMO_BUDGET;
+  render();
+}
+
+demoBtn.addEventListener("click", () => (demoMode ? showDemoData() : insertDemoData()));
 
 /* ===== 렌더링 ===== */
 function render() {
@@ -545,12 +562,14 @@ function renderEntries(monthEntries) {
   ringFill.style.strokeDasharray = RING_CIRCUMFERENCE;
   setType("expense");
 
-  // ?demo=1 : 저장된 데이터를 건드리지 않고 데모 화면만 표시 (스크린샷용)
+  // ?demo=1 : DB를 건드리지 않고 데모 화면만 표시 (스크린샷용)
   const params = new URLSearchParams(location.search);
   if (params.has("demo")) {
+    demoMode = true;
     if (params.get("theme") === "dark") applyTheme("dark", false);
-    applyDemoData(false);
+    setStatus("demo", "데모 모드");
+    showDemoData();
   } else {
-    render();
+    loadFromDb();
   }
 })();

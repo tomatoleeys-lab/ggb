@@ -129,6 +129,34 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 
+/* DB 연결 상태 배지 */
+.db-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.db-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.db-status.ok { color: var(--income); }
+.db-status.error { color: var(--expense); }
+.db-status.demo { color: var(--primary); }
+
 .month-nav {
   display: flex;
   align-items: center;
@@ -912,6 +940,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 @media (max-width: 520px) {
   .topbar { flex-direction: column; align-items: stretch; }
   .topbar-right { justify-content: space-between; }
+  .db-status { display: none; }
   .month-nav { flex: 1; justify-content: center; }
   .chips { grid-template-columns: repeat(3, 1fr); }
   .budget-top { flex-direction: column; align-items: stretch; gap: 16px; }
