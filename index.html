@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>간단 가계부</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>💰 간단 가계부</h1>
+      <div class="month-filter">
+        <button id="prevMonth" class="icon-btn" aria-label="이전 달">‹</button>
+        <span id="currentMonth" class="current-month"></span>
+        <button id="nextMonth" class="icon-btn" aria-label="다음 달">›</button>
+      </div>
+    </header>
+
+    <section class="summary">
+      <div class="summary-card income">
+        <span class="label">수입</span>
+        <span id="totalIncome" class="amount">0원</span>
+      </div>
+      <div class="summary-card expense">
+        <span class="label">지출</span>
+        <span id="totalExpense" class="amount">0원</span>
+      </div>
+      <div class="summary-card balance">
+        <span class="label">잔액</span>
+        <span id="totalBalance" class="amount">0원</span>
+      </div>
+    </section>
+
+    <form id="entryForm" class="entry-form">
+      <div class="type-toggle">
+        <button type="button" class="type-btn expense-btn active" data-type="expense">지출</button>
+        <button type="button" class="type-btn income-btn" data-type="income">수입</button>
+      </div>
+
+      <div class="form-row">
+        <input type="date" id="date" required />
+        <select id="category" required></select>
+      </div>
+      <div class="form-row">
+        <input type="number" id="amount" placeholder="금액" min="0" step="1" required />
+        <input type="text" id="memo" placeholder="메모 (선택)" maxlength="60" />
+      </div>
+      <button type="submit" class="submit-btn">추가하기</button>
+    </form>
+
+    <section class="list-section">
+      <div class="list-header">
+        <h2>내역</h2>
+        <span id="entryCount" class="entry-count">0건</span>
+      </div>
+      <ul id="entryList" class="entry-list"></ul>
+      <p id="emptyState" class="empty-state">이번 달 내역이 없습니다.</p>
+    </section>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
