@@ -731,6 +731,14 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .field input:focus { border-color: var(--primary); background: var(--surface); }
 
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-actions .primary-btn { flex: 1; }
+.form-actions .ghost-btn.hidden { display: none; }
+
 .primary-btn {
   width: 100%;
   padding: 14px;
@@ -770,6 +778,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 
 .entry-item:hover { background: var(--surface-2); }
+.entry-item.editing { background: var(--surface-2); outline: 1.5px dashed var(--primary); outline-offset: -1.5px; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
@@ -824,11 +833,18 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transition: opacity 0.18s, background 0.18s, color 0.18s;
 }
 
-.entry-item:hover .del-btn { opacity: 1; }
+.edit-btn { width: 26px; height: 26px; flex: none; border: none; border-radius: 8px;
+  background: transparent; color: var(--muted); font-size: 12px; cursor: pointer;
+  opacity: 0; transition: opacity 0.18s, background 0.18s, color 0.18s; }
+
+.entry-item:hover .del-btn,
+.entry-item:hover .edit-btn { opacity: 1; }
 .del-btn:hover { background: var(--track); color: var(--expense); }
+.edit-btn:hover { background: var(--track); color: var(--primary); }
+.entry-item.editing .edit-btn { opacity: 1; color: var(--primary); }
 
 @media (hover: none) {
-  .del-btn { opacity: 0.45; }
+  .del-btn, .edit-btn { opacity: 0.45; }
 }
 
 .empty-state {

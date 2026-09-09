@@ -67,6 +67,15 @@ const DB = {
     return (rows || []).map(normalizeEntry);
   },
 
+  async updateEntry(id, patch) {
+    const rows = await request(`/entries?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: patch,
+      prefer: "return=representation",
+    });
+    return normalizeEntry(rows[0]);
+  },
+
   async deleteEntry(id) {
     await request(`/entries?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
   },

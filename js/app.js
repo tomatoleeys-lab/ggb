@@ -29,6 +29,7 @@ function metaOf(category) {
 let entries = [];
 let budget = { total: 0, categories: {} }; // { total, categories: { [category]: number } }
 let demoMode = false; // ?demo=1 : DB를 건드리지 않고 화면만 표시
+let editingId = null; // 현재 수정 중인 내역의 id (null이면 새 내역 추가 모드)
 let currentType = "expense";
 let selectedCategory = CATEGORIES.expense[0];
 let viewDate = new Date(); // 현재 보고 있는 월
@@ -45,6 +46,8 @@ const segmented = document.getElementById("segmented");
 const categoryChips = document.getElementById("categoryChips");
 const demoBtn = document.getElementById("demoBtn");
 const dbStatus = document.getElementById("dbStatus");
+const submitBtn = document.getElementById("submitBtn");
+const cancelEditBtn = document.getElementById("cancelEditBtn");
 
 const heroBalance = document.getElementById("heroBalance");
 const heroIncome = document.getElementById("heroIncome");
@@ -244,7 +247,45 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !budgetModal.classList.contains("hidden")) closeBudgetModal();
 });
 
-/* ===== 내역 추가 / 삭제 ===== */
+/* ===== 내역 추가 / 수정 / 삭제 ===== */
+
+// 내역의 ✎ 버튼을 누르면 입력 폼이 "수정 모드"로 바뀐다: 해당 내역 값을 채워 넣고
+// 제출 시 추가 대신 수정 요청을 보낸다.
+function startEdit(entry) {
+  editingId = entry.id;
+
+  setType(entry.type);
+  selectedCategory = entry.category;
+  renderCategoryChips();
+
+  amountInput.value = entry.amount;
+  dateInput.value = entry.date;
+  memoInput.value = entry.memo || "";
+
+  submitBtn.textContent = "수정하기";
+  cancelEditBtn.classList.remove("hidden");
+  render(); // 목록에서 수정 중인 항목 강조
+  amountInput.focus();
+}
+
+// 입력값만 비우고 폼 모드(추가/수정)는 그대로 둔다 - 추가 직후 다음 항목을 이어서 입력할 때 사용
+function resetFormInputs() {
+  amountInput.value = "";
+  memoInput.value = "";
+  amountInput.focus();
+}
+
+// 수정 모드를 완전히 빠져나와 "추가" 상태로 되돌린다
+function exitEditMode() {
+  editingId = null;
+  submitBtn.textContent = "추가하기";
+  cancelEditBtn.classList.add("hidden");
+  resetFormInputs();
+  render();
+}
+
+cancelEditBtn.addEventListener("click", exitEditMode);
+
 entryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const amount = Number(amountInput.value);
@@ -258,32 +299,48 @@ entryForm.addEventListener("submit", async (e) => {
     memo: memoInput.value.trim(),
   };
 
-  amountInput.value = "";
-  memoInput.value = "";
-  amountInput.focus();
+  const targetId = editingId;
 
-  // 방금 추가한 항목의 달로 이동해서 보여줌
+  // 방금 추가/수정한 항목의 달로 이동해서 보여줌
   const added = new Date(draft.date);
   viewDate = new Date(added.getFullYear(), added.getMonth(), 1);
 
   if (demoMode) {
-    entries.push({ ...draft, id: `local-${Date.now().toString(36)}` });
-    render();
+    if (targetId) {
+      entries = entries.map((e) => (e.id === targetId ? { ...e, ...draft } : e));
+      exitEditMode();
+    } else {
+      entries.push({ ...draft, id: `local-${Date.now().toString(36)}` });
+      resetFormInputs();
+      render();
+    }
     return;
   }
 
-  setStatus("loading", "저장 중…");
+  setStatus("loading", targetId ? "수정 중…" : "저장 중…");
   try {
-    entries.push(await DB.addEntry(draft));
+    if (targetId) {
+      const updated = await DB.updateEntry(targetId, draft);
+      entries = entries.map((e) => (e.id === targetId ? updated : e));
+    } else {
+      entries.push(await DB.addEntry(draft));
+    }
     setStatus("ok", "DB 연결됨");
   } catch (err) {
     console.error(err);
-    setStatus("error", "저장 실패");
+    setStatus("error", targetId ? "수정 실패" : "저장 실패");
   }
-  render();
+
+  if (targetId) {
+    exitEditMode();
+  } else {
+    resetFormInputs();
+    render();
+  }
 });
 
 async function deleteEntry(id) {
+  if (id === editingId) exitEditMode(); // 수정 중이던 항목을 지우면 편집 모드 해제
   entries = entries.filter((e) => e.id !== id);
   render();
 
@@ -572,7 +629,7 @@ function renderEntries(monthEntries) {
   monthEntries.forEach((e, i) => {
     const { icon, color } = metaOf(e.category);
     const li = document.createElement("li");
-    li.className = `entry-item ${e.type}`;
+    li.className = `entry-item ${e.type}` + (e.id === editingId ? " editing" : "");
     li.style.animationDelay = `${Math.min(i * 0.03, 0.4)}s`;
     li.innerHTML = `
       <span class="entry-icon" style="background:${color}1f; color:${color}">${icon}</span>
@@ -581,9 +638,17 @@ function renderEntries(monthEntries) {
         <div class="entry-sub">${escapeHtml(e.category)} · ${formatDateLabel(e.date)}</div>
       </div>
       <span class="entry-amount">${e.type === "income" ? "+" : "−"}${formatWon(e.amount)}</span>
+      <button class="edit-btn" aria-label="수정" data-id="${e.id}">✎</button>
       <button class="del-btn" aria-label="삭제" data-id="${e.id}">✕</button>
     `;
     entryList.appendChild(li);
+  });
+
+  entryList.querySelectorAll(".edit-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const entry = entries.find((e) => e.id === btn.dataset.id);
+      if (entry) startEdit(entry);
+    });
   });
 
   entryList.querySelectorAll(".del-btn").forEach((btn) => {
