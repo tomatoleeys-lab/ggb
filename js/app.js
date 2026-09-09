@@ -298,24 +298,65 @@ async function deleteEntry(id) {
   }
 }
 
-/* ===== 데모 데이터 ===== */
+/* ===== 데모 데이터 =====
+   통계청 임금근로자 평균 소득(월 세전 약 360만 원, 세후 실수령 약 310만 원)과
+   1인 근로자 가구 월평균 소비지출(약 220만 원) 수준을 참고한 값이다. */
 const DEMO_BUDGET = {
-  total: 1500000,
-  categories: { 식비: 350000, 교통: 80000, 쇼핑: 150000, 주거: 650000, 문화생활: 100000 },
+  total: 2500000,
+  categories: {
+    식비: 750000,
+    교통: 180000,
+    쇼핑: 250000,
+    주거: 700000,
+    문화생활: 150000,
+    기타: 400000,
+  },
 };
 
 const DEMO_ITEMS = [
-  { type: "income", category: "급여", amount: 3200000, memo: "이번 달 급여", day: 25 },
-  { type: "income", category: "부수입", amount: 180000, memo: "블로그 수익", day: 18 },
-  { type: "expense", category: "주거", amount: 650000, memo: "월세", day: 1 },
-  { type: "expense", category: "식비", amount: 42000, memo: "장보기", day: 3 },
-  { type: "expense", category: "교통", amount: 55000, memo: "교통카드 충전", day: 4 },
-  { type: "expense", category: "식비", amount: 13500, memo: "점심 - 김치찌개", day: 8 },
-  { type: "expense", category: "문화생활", amount: 32000, memo: "영화 2인", day: 12 },
-  { type: "expense", category: "쇼핑", amount: 89000, memo: "가을 니트", day: 14 },
-  { type: "expense", category: "식비", amount: 28000, memo: "친구와 저녁", day: 16 },
-  { type: "expense", category: "의료", amount: 15000, memo: "감기약", day: 20 },
-  { type: "expense", category: "기타", amount: 12900, memo: "구독 서비스", day: 22 },
+  // 수입: 세후 실수령 급여 + 소소한 부수입 (합계 3,270,000원)
+  { type: "income", category: "급여", amount: 3120000, memo: "9월 급여 (세후 실수령)", day: 25 },
+  { type: "income", category: "부수입", amount: 150000, memo: "중고거래 · 앱테크", day: 18 },
+
+  // 주거 630,000원 - 월세 + 관리비/공과금
+  { type: "expense", category: "주거", amount: 500000, memo: "월세", day: 1 },
+  { type: "expense", category: "주거", amount: 130000, memo: "관리비 · 전기 · 가스", day: 5 },
+
+  // 식비 630,000원 - 장보기 + 점심/외식/배달
+  { type: "expense", category: "식비", amount: 118000, memo: "주말 장보기", day: 3 },
+  { type: "expense", category: "식비", amount: 88000, memo: "회사 점심값 (1주)", day: 7 },
+  { type: "expense", category: "식비", amount: 38000, memo: "카페 · 간식", day: 8 },
+  { type: "expense", category: "식비", amount: 96000, memo: "회사 점심값 (2~3주)", day: 14 },
+  { type: "expense", category: "식비", amount: 84000, memo: "장보기 · 생필품 식료품", day: 17 },
+  { type: "expense", category: "식비", amount: 62000, memo: "팀 저녁 모임", day: 19 },
+  { type: "expense", category: "식비", amount: 55000, memo: "주말 외식", day: 21 },
+  { type: "expense", category: "식비", amount: 42000, memo: "편의점 · 커피", day: 24 },
+  { type: "expense", category: "식비", amount: 47000, memo: "배달 음식", day: 26 },
+
+  // 교통 143,000원 - 대중교통 + 택시 + 고향 방문
+  { type: "expense", category: "교통", amount: 66000, memo: "교통카드 충전", day: 2 },
+  { type: "expense", category: "교통", amount: 43000, memo: "KTX 왕복", day: 13 },
+  { type: "expense", category: "교통", amount: 34000, memo: "심야 택시", day: 20 },
+
+  // 문화생활 115,000원
+  { type: "expense", category: "문화생활", amount: 55000, memo: "헬스장 월 회비", day: 6 },
+  { type: "expense", category: "문화생활", amount: 32000, memo: "영화 2인", day: 9 },
+  { type: "expense", category: "문화생활", amount: 28000, memo: "도서 구입", day: 23 },
+
+  // 쇼핑 177,000원
+  { type: "expense", category: "쇼핑", amount: 48000, memo: "생활용품", day: 11 },
+  { type: "expense", category: "쇼핑", amount: 129000, memo: "가을 자켓", day: 15 },
+
+  // 의료 57,000원
+  { type: "expense", category: "의료", amount: 45000, memo: "치과 스케일링", day: 16 },
+  { type: "expense", category: "의료", amount: 12000, memo: "감기약 · 영양제", day: 27 },
+
+  // 기타 449,900원 - 통신/보험/경조사/대출 상환 (예산 초과 항목)
+  { type: "expense", category: "기타", amount: 90000, memo: "실비보험료", day: 10 },
+  { type: "expense", category: "기타", amount: 100000, memo: "결혼식 축의금", day: 13 },
+  { type: "expense", category: "기타", amount: 66000, memo: "통신비", day: 12 },
+  { type: "expense", category: "기타", amount: 13900, memo: "구독 서비스", day: 22 },
+  { type: "expense", category: "기타", amount: 180000, memo: "학자금 대출 상환", day: 28 },
 ];
 
 function buildDemoEntries(date) {
